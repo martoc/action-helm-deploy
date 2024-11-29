@@ -37,7 +37,7 @@ inputs:
   chart_version:
     description: 'Chart Version'
     required: true
-  chart_values_file:
+  chart_value_file:
     description: 'Chart Values File'
     required: true
 runs:
