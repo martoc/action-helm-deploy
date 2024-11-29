@@ -20,17 +20,6 @@ inputs:
     description: 'Google Cloud Project ID'
     required: false
     default: ''
-  workload_identity_provider:
-    description: 'Workload Identity Provider'
-    required: false
-    default: ''
-  service_account:
-    description: 'Service Account'
-    required: false
-    default: ''
-  cluster_name:
-    description: 'Cluster Name'
-    required: true
   chart_name:
     description: 'Chart Name'
     required: true
@@ -43,28 +32,10 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: 'Set up Cloud SDK'
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        version: 499.0.0
-      if: ${{ inputs.registry == 'gcp' }}
-    - uses: google-github-actions/auth@v2
-      with:
-        workload_identity_provider: ${{ inputs.workload_identity_provider }}
-        service_account: ${{ inputs.service_account }}
-      if: ${{ inputs.registry == 'gcp' }}
-    - name: Get GKE credentials
-      uses: google-github-actions/get-gke-credentials@v2
-      with:
-        cluster_name: ${{ inputs.cluster_name }}
-        location: ${{ inputs.region }}
-      if: ${{ inputs.registry == 'gcp' }}
     - name: Login to registry
       shell: sh
       run: |
-        gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin https://${{ inputs.region }}-docker.pkg.dev
+          gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin https://${{ inputs.region }}-docker.pkg.dev
       if: ${{ inputs.registry == 'gcp' }}
     - name: Deploy
       shell: sh
