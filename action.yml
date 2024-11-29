@@ -70,5 +70,5 @@ runs:
         helm template \
           oci://${{ inputs.region }}-docker.pkg.dev/${{ inputs.gcp_project_id }}/${{ inputs.repository_name }}/${{ inputs.chart_name }} \
           --version ${{ inputs.chart_version }} \
-          --values ${{ inputs.chart_values_file }} | kubectl apply -f -
+          --values ${{ inputs.chart_value_file }} | kubectl apply -f -
       if: ${{ inputs.registry == 'gcp' }}
