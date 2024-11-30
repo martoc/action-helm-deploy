@@ -16,6 +16,10 @@ inputs:
     description: 'Repository Name'
     required: false
     default: ''
+  environment:
+    description: 'Environment'
+    required: false
+    default: ''
   gcp_project_id:
     description: 'Google Cloud Project ID'
     required: false
@@ -43,5 +47,9 @@ runs:
         helm template \
           oci://${{ inputs.region }}-docker.pkg.dev/${{ inputs.gcp_project_id }}/${{ inputs.repository_name }}/${{ inputs.chart_name }} \
           --version ${{ inputs.chart_version }} \
-          --values ${{ inputs.chart_value_file }} | kubectl apply -f -
+          --values ${{ inputs.chart_value_file }} \
+          --set appVersion="${TAG_VERSION}" \
+          --set environment="${{ inputs.environment }}" \
+          --set gcpProjectId="${{ inputs.gcp_project_id }}" \
+          --set region=${{ inputs.region }} | kubectl apply -f -
       if: ${{ inputs.registry == 'gcp' }}
