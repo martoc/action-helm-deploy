@@ -51,7 +51,7 @@ runs:
         if [ -z "${{ inputs.version }}" ]; then
           echo "No version provided"
         else
-          export TAG_VERSION=${{ inputs.version }}
+          export TAG_VERSION="${{ inputs.version }}"
         fi
         echo "TAG_VERSION=${TAG_VERSION}"
         helm template \
