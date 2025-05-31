@@ -43,7 +43,7 @@ runs:
     - name: Login to registry
       shell: sh
       run: |
-        gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin https://${{ inputs.region }}-docker.pkg.dev
+        gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin ${{ inputs.region }}-docker.pkg.dev
       if: ${{ inputs.registry == 'gcp' }}
     - name: Deploy
       shell: sh
