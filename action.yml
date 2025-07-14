@@ -63,5 +63,8 @@ runs:
           --set appVersion="${TAG_VERSION}" \
           --set environment="${{ inputs.environment }}" \
           --set gcpProjectId="${{ inputs.gcp_project_id }}" \
-          --set region="${{ inputs.region }}" | kubectl apply -f -
+          --set region="${{ inputs.region }}" > deployment.yaml
+          echo "======> Generated deployment.yaml:"
+          cat deployment.yaml
+          kubectl apply -f deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
