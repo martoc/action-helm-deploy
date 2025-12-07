@@ -40,12 +40,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Login to registry
+    - name: Login to GCP Artifact Registry
       shell: sh
       run: |
         gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin ${{ inputs.region }}-docker.pkg.dev
       if: ${{ inputs.registry == 'gcp' }}
-    - name: Deploy
+    - name: Deploy to GCP Artifact Registry
       shell: sh
       run: |
         if [ -z "${{ inputs.version }}" ]; then
@@ -67,14 +67,13 @@ runs:
           echo "======> Generated deployment.yaml:"
           cat deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
-    - name: Upload deployment.yaml artifact
+    - name: Store deployment.yaml artifact
       uses: actions/upload-artifact@v4
       with:
         name: deployment-yaml
         path: deployment.yaml
-        retention-days: 7
-    - name: Apply deployment
+        retention-days: 30
+    - name: kubectl apply
       shell: sh
       run: |
         kubectl apply -f deployment.yaml
-      if: ${{ inputs.registry == 'gcp' }}
