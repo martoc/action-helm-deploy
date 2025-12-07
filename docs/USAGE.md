@@ -1,38 +1,53 @@
 # Usage
 
-This document provides usage examples for the `action-helm-deploy` GitHub Action.
+## Overview
 
-## Table of Contents
+This GitHub Action is designed to deploy Helm charts to Kubernetes clusters.
+It simplifies the CI/CD workflow by automating the process of pulling Helm charts
+from a registry and deploying them to a Kubernetes cluster.
 
-- [Basic GCP Deployment](#basic-gcp-deployment)
-- [Full Workflow Example](#full-workflow-example)
-- [Multi-Environment Deployment](#multi-environment-deployment)
-- [Using with Version Tags](#using-with-version-tags)
-- [Values File Examples](#values-file-examples)
+## Prerequisites
 
-## Basic GCP Deployment
+Secrets Configuration
 
-Deploy a Helm chart from GCP Artifact Registry:
+Before using this action, ensure that you have the following secrets configured in your GitHub repository:
+
+### GCP Artifact Registry
+
+* **GCP_WORKLOAD_IDENTITY_PROVIDER:** Workload identity provider for GCP authentication.
+* **GCP_SERVICE_ACCOUNT:** The email of the service account to use for GCP authentication.
+
+## Inputs
+
+### Action Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `registry` | Registry to pull the Helm chart from. Valid values: `gcp` | No | `docker.io` |
+| `region` | Region where the registry is located. Valid for GCP regions | No | `""` |
+| `repository_name` | Repository name in the registry | No | `""` |
+| `environment` | Environment name for deployment | No | `""` |
+| `gcp_project_id` | Google Cloud Project ID | No | `""` |
+| `chart_name` | Name of the Helm chart to deploy | Yes | - |
+| `chart_version` | Version of the Helm chart to deploy | Yes | - |
+| `chart_value_file` | Path to the Helm values file | Yes | - |
+| `version` | Application version to set in the deployment | No | `""` |
+
+### Environment Variables
+
+The following environment variables can be used to customize the deployment:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `TAG_VERSION` | The version tag for the application (used if `version` input is not provided) | No |
+
+## Example
+
+Here are examples of how to use this GitHub Action to deploy Helm charts
+to GKE clusters.
 
 ```yaml
-- name: Deploy
-  uses: martoc/action-helm-deploy@v0
-  with:
-    registry: gcp
-    region: europe-west2
-    repository_name: helm-charts
-    gcp_project_id: my-project-id
-    chart_name: my-application
-    chart_version: 1.0.0
-    chart_value_file: ./values.yaml
-```
-
-## Full Workflow Example
-
-A complete workflow that authenticates to GCP and deploys a Helm chart:
-
-```yaml
-name: Deploy to GKE
+name: Deploy
 
 on:
   push:
@@ -40,190 +55,87 @@ on:
       - main
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  gcp:
     permissions:
-      contents: read
+      contents: write
       id-token: write
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - uses: actions/checkout@v6
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Install gke-gcloud-auth-plugin
-        run: |
-          gcloud components install gke-gcloud-auth-plugin
-
-      - name: Configure kubectl
-        run: |
-          gcloud container clusters get-credentials CLUSTER_NAME \
-            --region REGION \
-            --project ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Deploy Helm Chart
+          fetch-depth: 50
+          fetch-tags: true
+      - name: Tag
+        uses: martoc/action-tag@v0
+        with:
+          skip-push: true
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: your-cluster
+          location: europe-west2
+      - name: Deploy
         uses: martoc/action-helm-deploy@v0
         with:
           registry: gcp
           region: europe-west2
-          repository_name: helm-charts
-          gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
-          chart_name: my-application
+          repository_name: repository
+          gcp_project_id: project-id
+          chart_name: your-chart
           chart_version: 1.0.0
-          chart_value_file: ./kubernetes/values.yaml
+          chart_value_file: values.yaml
           environment: production
-          version: ${{ github.sha }}
+
+  with-version:
+    permissions:
+      contents: write
+      id-token: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 50
+          fetch-tags: true
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: your-cluster
+          location: europe-west2
+      - name: Deploy with specific version
+        uses: martoc/action-helm-deploy@v0
+        with:
+          registry: gcp
+          region: europe-west2
+          repository_name: repository
+          gcp_project_id: project-id
+          chart_name: your-chart
+          chart_version: 1.0.0
+          chart_value_file: values.yaml
+          version: 2.0.0
 ```
 
-## Multi-Environment Deployment
+## Registry-Specific Requirements
 
-Deploy to different environments using separate values files:
+### GCP Artifact Registry
 
-### Development
+* `registry` input must be set to `gcp`
+* `region` input is required
+* `repository_name` input is required
+* `gcp_project_id` input is required
+* GCP authentication must be configured (e.g., using `google-github-actions/auth`)
+* GKE credentials must be configured (e.g., using `google-github-actions/get-gke-credentials`)
 
-```yaml
-- name: Deploy to Development
-  uses: martoc/action-helm-deploy@v0
-  with:
-    registry: gcp
-    region: europe-west2
-    repository_name: helm-charts
-    gcp_project_id: my-project-dev
-    chart_name: my-application
-    chart_version: 1.0.0
-    chart_value_file: ./values/dev.yaml
-    environment: dev
-    version: ${{ github.sha }}
-```
+## Helm Values
 
-### Staging
+The action automatically sets the following values when deploying the chart:
 
-```yaml
-- name: Deploy to Staging
-  uses: martoc/action-helm-deploy@v0
-  with:
-    registry: gcp
-    region: europe-west2
-    repository_name: helm-charts
-    gcp_project_id: my-project-staging
-    chart_name: my-application
-    chart_version: 1.0.0
-    chart_value_file: ./values/staging.yaml
-    environment: staging
-    version: ${{ github.sha }}
-```
-
-### Production
-
-```yaml
-- name: Deploy to Production
-  uses: martoc/action-helm-deploy@v0
-  with:
-    registry: gcp
-    region: europe-west2
-    repository_name: helm-charts
-    gcp_project_id: my-project-prod
-    chart_name: my-application
-    chart_version: 1.0.0
-    chart_value_file: ./values/production.yaml
-    environment: production
-    version: ${{ github.ref_name }}
-```
-
-## Using with Version Tags
-
-Deploy specific versions based on Git tags:
-
-```yaml
-- name: Deploy Release
-  uses: martoc/action-helm-deploy@v0
-  with:
-    registry: gcp
-    region: us-central1
-    repository_name: helm-charts
-    gcp_project_id: my-project-id
-    chart_name: my-application
-    chart_version: ${{ github.ref_name }}
-    chart_value_file: ./values/production.yaml
-    environment: production
-    version: ${{ github.ref_name }}
-```
-
-## Values File Examples
-
-### Minimal Values File
-
-```yaml
-# values.yaml
-replicaCount: 1
-
-image:
-  repository: my-app
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  port: 80
-```
-
-### Production Values File
-
-```yaml
-# values/production.yaml
-replicaCount: 3
-
-image:
-  repository: my-app
-  pullPolicy: Always
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-
-ingress:
-  enabled: true
-  className: nginx
-  hosts:
-    - host: app.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-```
-
-### Using Action-Injected Values
-
-The action automatically injects certain values that you can use in your templates:
-
-```yaml
-# In your Helm template (e.g., deployment.yaml)
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ .Release.Name }}
-  labels:
-    app.kubernetes.io/version: {{ .Values.appVersion | quote }}
-    environment: {{ .Values.environment | quote }}
-spec:
-  template:
-    metadata:
-      annotations:
-        gcpProjectId: {{ .Values.gcpProjectId | quote }}
-        region: {{ .Values.region | quote }}
-```
+* `appVersion` - Set to `TAG_VERSION` environment variable or `version` input
+* `environment` - Set to the `environment` input value
+* `gcpProjectId` - Set to the `gcp_project_id` input value
+* `region` - Set to the `region` input value
