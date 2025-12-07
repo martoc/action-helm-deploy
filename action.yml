@@ -66,5 +66,15 @@ runs:
           --set region="${{ inputs.region }}" > deployment.yaml
           echo "======> Generated deployment.yaml:"
           cat deployment.yaml
-          kubectl apply -f deployment.yaml
+      if: ${{ inputs.registry == 'gcp' }}
+    - name: Upload deployment.yaml artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-yaml
+        path: deployment.yaml
+        retention-days: 7
+    - name: Apply deployment
+      shell: sh
+      run: |
+        kubectl apply -f deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
