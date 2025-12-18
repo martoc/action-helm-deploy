@@ -67,6 +67,18 @@ runs:
           echo "======> Generated deployment.yaml:"
           cat deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
+    - name: Set artifact name
+      id: artifact-name
+      shell: sh
+      run: |
+        ARTIFACT_NAME=$(echo "deployment-yaml-${{ inputs.chart_value_file }}" | tr '/' '-')
+        echo "name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+    - name: Store deployment.yaml artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.artifact-name.outputs.name }}
+        path: deployment.yaml
+        retention-days: 30
     - name: kubectl apply
       shell: sh
       run: |
