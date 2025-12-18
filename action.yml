@@ -67,12 +67,6 @@ runs:
           echo "======> Generated deployment.yaml:"
           cat deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
-    - name: Store deployment.yaml artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: deployment-yaml
-        path: deployment.yaml
-        retention-days: 30
     - name: kubectl apply
       shell: sh
       run: |
