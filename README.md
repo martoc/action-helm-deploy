@@ -97,6 +97,6 @@ For more detailed documentation, see:
 - [Contributing](./.github/CONTRIBUTING.md)
 - [Security Policy](./.github/SECURITY.md)
 
-## License
+## Licence
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licenced under the MIT Licence - see the [LICENCE](LICENSE) file for details.
