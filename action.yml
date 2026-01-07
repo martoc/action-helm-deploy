@@ -21,6 +21,14 @@ inputs:
     description: "Google Cloud Project ID (required for GCP registry)"
     required: false
     default: ""
+  workload_identity_provider:
+    description: "Workload Identity Provider (required for GCP registry)"
+    required: false
+    default: ""
+  service_account:
+    description: "Service Account (required for GCP registry)"
+    required: false
+    default: ""
   aws_role_arn:
     description: "AWS IAM Role ARN for OIDC authentication (required for AWS registry)"
     required: false
@@ -41,12 +49,29 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v3
+      with:
+        version: 499.0.0
+      if: ${{ inputs.registry == 'gcp' }}
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: ${{ inputs.service_account }}
+      if: ${{ inputs.registry == 'gcp' }}
+    - name: Configure GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        location: ${{ inputs.region }}
+        cluster_name: ${{ inputs.cluster_name }}
+      if: ${{ inputs.registry == 'gcp' }}
     - name: Login to GCP Artifact Registry
       shell: sh
       run: |
         gcloud auth print-access-token | helm registry login -u oauth2accesstoken --password-stdin ${{ inputs.region }}-docker.pkg.dev
       if: ${{ inputs.registry == 'gcp' }}
-    - name: Deploy to GCP Artifact Registry
+    - name: Deploy to GCP
       shell: sh
       run: |
         if [ -z "${{ inputs.version }}" ]; then
