@@ -5,23 +5,24 @@ description: |
 author: martoc
 inputs:
   registry:
-    description: "Registry to push the container to (default: docker.io) valid values: gcp"
-    required: false
-    default: "docker.io"
+    description: "Registry to deploy from. Valid values: gcp, aws"
+    required: true
   region:
-    description: "Region to push the container to valid values: google cloud or aws regions"
-    required: false
-    default: ""
+    description: "Region to deploy from. Valid values: Google Cloud or AWS regions"
+    required: true
   repository_name:
     description: "Repository Name"
-    required: false
-    default: ""
+    required: true
   environment:
     description: "Environment"
     required: false
     default: ""
   gcp_project_id:
-    description: "Google Cloud Project ID"
+    description: "Google Cloud Project ID (required for GCP registry)"
+    required: false
+    default: ""
+  aws_role_arn:
+    description: "AWS IAM Role ARN for OIDC authentication (required for AWS registry)"
     required: false
     default: ""
   chart_name:
@@ -67,6 +68,46 @@ runs:
           echo "======> Generated deployment.yaml:"
           cat deployment.yaml
       if: ${{ inputs.registry == 'gcp' }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        aws-region: ${{ inputs.region }}
+      if: ${{ inputs.registry == 'aws' }}
+    - name: Login to AWS ECR
+      shell: sh
+      run: |
+        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn }}" | cut -d':' -f5)
+        if [ -z "${AWS_ACCOUNT_ID}" ]; then
+          echo "Error: Failed to extract AWS account ID from aws_role_arn ('${{ inputs.aws_role_arn }}')." >&2
+          echo "Please ensure it is a valid IAM role ARN, e.g., arn:aws:iam::<account-id>:role/<role-name>." >&2
+          exit 1
+        fi
+        aws ecr get-login-password --region ${{ inputs.region }} | \
+          helm registry login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${{ inputs.region }}.amazonaws.com"
+      if: ${{ inputs.registry == 'aws' }}
+    - name: Deploy from AWS ECR
+      shell: sh
+      run: |
+        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn }}" | cut -d':' -f5)
+        if [ -z "${{ inputs.version }}" ]; then
+          echo "No version provided"
+        else
+          export TAG_VERSION="${{ inputs.version }}"
+        fi
+        echo "TAG_VERSION=${TAG_VERSION}"
+        echo "Chart Values:"
+        cat "${{ inputs.chart_value_file }}"
+        helm template \
+          oci://${AWS_ACCOUNT_ID}.dkr.ecr.${{ inputs.region }}.amazonaws.com/${{ inputs.repository_name }}/${{ inputs.chart_name }} \
+          --version ${{ inputs.chart_version }} \
+          --values ${{ inputs.chart_value_file }} \
+          --set appVersion="${TAG_VERSION}" \
+          --set environment="${{ inputs.environment }}" \
+          --set region="${{ inputs.region }}" > deployment.yaml
+          echo "======> Generated deployment.yaml:"
+          cat deployment.yaml
+      if: ${{ inputs.registry == 'aws' }}
     - name: Set artifact name
       id: artifact-name
       shell: sh
