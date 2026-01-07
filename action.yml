@@ -37,6 +37,10 @@ inputs:
     description: "AWS IAM Role ARN for OIDC authentication (required for AWS registry)"
     required: false
     default: ""
+  aws_role_arn_registry:
+    description: "AWS IAM Role ARN for OIDC authentication (required for AWS registry)"
+    required: false
+    default: ""
   chart_name:
     description: "Chart Name"
     required: true
@@ -100,22 +104,15 @@ runs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ inputs.aws_role_arn }}
+        role-to-assume: ${{ inputs.aws_role_arn_registry }}
         aws-region: ${{ inputs.region }}
-      if: ${{ inputs.registry == 'aws' }}
-    - name: Configure EKS credentials
-      shell: sh
-      run: |
-        aws eks update-kubeconfig \
-          --name "${{ inputs.cluster_name }}" \
-          --region "${{ inputs.region }}"
       if: ${{ inputs.registry == 'aws' }}
     - name: Login to AWS ECR
       shell: sh
       run: |
-        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn }}" | cut -d':' -f5)
+        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn_registry }}" | cut -d':' -f5)
         if [ -z "${AWS_ACCOUNT_ID}" ]; then
-          echo "Error: Failed to extract AWS account ID from aws_role_arn ('${{ inputs.aws_role_arn }}')." >&2
+          echo "Error: Failed to extract AWS account ID from aws_role_arn_registry ('${{ inputs.aws_role_arn_registry }}')." >&2
           echo "Please ensure it is a valid IAM role ARN, e.g., arn:aws:iam::<account-id>:role/<role-name>." >&2
           exit 1
         fi
@@ -125,7 +122,7 @@ runs:
     - name: Deploy from AWS ECR
       shell: sh
       run: |
-        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn }}" | cut -d':' -f5)
+        AWS_ACCOUNT_ID=$(echo "${{ inputs.aws_role_arn_registry }}" | cut -d':' -f5)
         if [ -z "${{ inputs.version }}" ]; then
           echo "No version provided"
         else
@@ -141,8 +138,9 @@ runs:
           --set appVersion="${TAG_VERSION}" \
           --set environment="${{ inputs.environment }}" \
           --set region="${{ inputs.region }}" > deployment.yaml
-          echo "======> Generated deployment.yaml:"
+          echo "====== BEING deployment.yaml ======"
           cat deployment.yaml
+          echo "====== END deployment.yaml ======"
       if: ${{ inputs.registry == 'aws' }}
     - name: Set artifact name
       id: artifact-name
@@ -156,6 +154,19 @@ runs:
         name: ${{ steps.artifact-name.outputs.name }}
         path: deployment.yaml
         retention-days: 30
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        aws-region: ${{ inputs.region }}
+      if: ${{ inputs.registry == 'aws' }}
+    - name: Configure EKS credentials
+      shell: sh
+      run: |
+        aws eks update-kubeconfig \
+          --name "${{ inputs.cluster_name }}" \
+          --region "${{ inputs.region }}"
+      if: ${{ inputs.registry == 'aws' }}
     - name: kubectl apply
       shell: sh
       run: |
