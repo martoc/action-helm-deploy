@@ -32,7 +32,9 @@ Before using this action, ensure that you have the following secrets configured 
 
 ### AWS ECR
 
-* **AWS_ROLE_ARN:** The IAM Role ARN configured for GitHub OIDC authentication (e.g., `arn:aws:iam::123456789012:role/github-actions-role`).
+* **AWS_ROLE_ARN:** The IAM Role ARN configured for GitHub OIDC authentication (e.g., `arn:aws:iam::123456789012:role/github-actions-role`). The role must have permissions for both ECR and EKS:
+  * **ECR permissions**: `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`
+  * **EKS permissions**: `eks:DescribeCluster`
 
 ## Inputs
 
