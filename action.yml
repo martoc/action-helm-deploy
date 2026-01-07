@@ -29,6 +29,10 @@ inputs:
     description: "Service Account (required for GCP registry)"
     required: false
     default: ""
+  cluster_name:
+    description: "Kubernetes cluster name (required for GCP registry)"
+    required: false
+    default: ""
   aws_role_arn:
     description: "AWS IAM Role ARN for OIDC authentication (required for AWS registry)"
     required: false

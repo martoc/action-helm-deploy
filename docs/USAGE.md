@@ -52,6 +52,7 @@ Before using this action, ensure that you have the following secrets configured 
 | `version` | Application version to set in the deployment | No | `""` |
 | `workload_identity_provider` | Workload Identity Provider (required for GCP registry) | No | `""` |
 | `service_account` | Service Account (required for GCP registry) | No | `""` |
+| `cluster_name` | Kubernetes cluster name (required for GCP registry) | No | `""` |
 
 ### Environment Variables
 
@@ -91,14 +92,6 @@ jobs:
         uses: martoc/action-tag@v0
         with:
           skip-push: true
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: your-cluster
-          location: europe-west2
       - name: Deploy
         uses: martoc/action-helm-deploy@v0
         with:
@@ -106,6 +99,9 @@ jobs:
           region: europe-west2
           repository_name: repository
           gcp_project_id: project-id
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          cluster_name: your-cluster
           chart_name: your-chart
           chart_version: 1.0.0
           chart_value_file: values.yaml
@@ -121,14 +117,6 @@ jobs:
         with:
           fetch-depth: 50
           fetch-tags: true
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: your-cluster
-          location: europe-west2
       - name: Deploy with specific version
         uses: martoc/action-helm-deploy@v0
         with:
@@ -136,6 +124,9 @@ jobs:
           region: europe-west2
           repository_name: repository
           gcp_project_id: project-id
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          cluster_name: your-cluster
           chart_name: your-chart
           chart_version: 1.0.0
           chart_value_file: values.yaml
@@ -214,8 +205,9 @@ jobs:
 * `region` input is required
 * `repository_name` input is required
 * `gcp_project_id` input is required
-* GCP authentication must be configured (e.g., using `google-github-actions/auth`)
-* GKE credentials must be configured (e.g., using `google-github-actions/get-gke-credentials`)
+* `workload_identity_provider` input is required
+* `service_account` input is required
+* `cluster_name` input is required
 
 ### AWS ECR
 

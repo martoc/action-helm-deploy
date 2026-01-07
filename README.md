@@ -25,9 +25,8 @@ Before using this action, ensure the following tools are available in your workf
 
 ### For GCP Artifact Registry
 
-- A GCP service account with permissions to read from Artifact Registry
-- `kubectl` configured with access to your target Kubernetes cluster
-- Prior authentication step using `google-github-actions/auth`
+- A GCP service account with permissions to read from Artifact Registry and access GKE
+- Workload Identity Federation configured for GitHub Actions
 
 ### For AWS ECR
 
@@ -39,14 +38,6 @@ Before using this action, ensure the following tools are available in your workf
 ### GCP Artifact Registry
 
 ```yaml
-- name: Authenticate to Google Cloud
-  uses: google-github-actions/auth@v2
-  with:
-    credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-- name: Set up Cloud SDK
-  uses: google-github-actions/setup-gcloud@v2
-
 - name: Deploy Helm Chart
   uses: martoc/action-helm-deploy@v0
   with:
@@ -54,6 +45,9 @@ Before using this action, ensure the following tools are available in your workf
     region: europe-west2
     repository_name: helm-charts
     gcp_project_id: my-project-id
+    workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+    cluster_name: my-cluster
     chart_name: my-application
     chart_version: 1.0.0
     chart_value_file: ./values/production.yaml
@@ -86,6 +80,9 @@ Before using this action, ensure the following tools are available in your workf
 | `region` | **Yes** | - | Cloud region (e.g., `europe-west2`, `eu-west-1`) |
 | `repository_name` | **Yes** | - | Name of the registry repository |
 | `gcp_project_id` | No | `""` | Google Cloud Project ID (required for GCP registry) |
+| `workload_identity_provider` | No | `""` | Workload Identity Provider (required for GCP registry) |
+| `service_account` | No | `""` | Service Account email (required for GCP registry) |
+| `cluster_name` | No | `""` | Kubernetes cluster name (required for GCP registry) |
 | `aws_role_arn` | No | `""` | AWS IAM Role ARN for OIDC authentication (required for AWS registry) |
 | `chart_name` | **Yes** | - | Name of the Helm chart to deploy |
 | `chart_version` | **Yes** | - | Version of the Helm chart |
@@ -97,12 +94,14 @@ Before using this action, ensure the following tools are available in your workf
 
 ### GCP Artifact Registry
 
-1. **Authentication**: Logs into the GCP Artifact Registry using `gcloud auth print-access-token`
-2. **Template Rendering**: Uses `helm template` to render the chart with:
+1. **Setup**: Sets up Cloud SDK and authenticates using Workload Identity Federation
+2. **GKE Credentials**: Configures kubectl with GKE cluster credentials
+3. **Registry Login**: Logs into GCP Artifact Registry using `gcloud auth print-access-token`
+4. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `gcpProjectId`, `region`
-3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
-4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+5. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+6. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ### AWS ECR
 
@@ -112,14 +111,6 @@ Before using this action, ensure the following tools are available in your workf
    - Custom values: `appVersion`, `environment`, `region`
 3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
 4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
-
-### AWS ECR
-
-1. **Authentication**: Configures AWS credentials using OIDC and logs into ECR using `aws ecr get-login-password`
-2. **Template Rendering**: Uses `helm template` to render the chart with:
-   - Values from the specified values file
-   - Custom values: `appVersion`, `environment`, `region`
-3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ## Helm Values
 
