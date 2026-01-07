@@ -28,8 +28,7 @@ Before using this action, ensure the following tools are available in your workf
 
 ### For AWS ECR
 
-- An IAM role with permissions to read from ECR, configured for GitHub OIDC
-- `kubectl` configured with access to your target Kubernetes cluster (e.g., EKS)
+- An IAM role with permissions to read from ECR and access EKS, configured for GitHub OIDC
 
 ## Quick Start
 
@@ -63,6 +62,7 @@ Before using this action, ensure the following tools are available in your workf
     region: eu-west-1
     repository_name: helm-charts
     aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+    cluster_name: my-cluster
     chart_name: my-application
     chart_version: 1.0.0
     chart_value_file: ./values/production.yaml
@@ -80,7 +80,7 @@ Before using this action, ensure the following tools are available in your workf
 | `gcp_project_id` | No | `""` | Google Cloud Project ID (required for GCP registry) |
 | `workload_identity_provider` | No | `""` | Workload Identity Provider (required for GCP registry) |
 | `service_account` | No | `""` | Service Account email (required for GCP registry) |
-| `cluster_name` | No | `""` | Kubernetes cluster name (required for GCP registry) |
+| `cluster_name` | No | `""` | Kubernetes cluster name (required for GCP and AWS registries) |
 | `aws_role_arn` | No | `""` | AWS IAM Role ARN for OIDC authentication (required for AWS registry) |
 | `chart_name` | **Yes** | - | Name of the Helm chart to deploy |
 | `chart_version` | **Yes** | - | Version of the Helm chart |
@@ -103,12 +103,14 @@ Before using this action, ensure the following tools are available in your workf
 
 ### AWS ECR
 
-1. **Authentication**: Configures AWS credentials using OIDC and logs into ECR using `aws ecr get-login-password`
-2. **Template Rendering**: Uses `helm template` to render the chart with:
+1. **Authentication**: Configures AWS credentials using OIDC
+2. **EKS Credentials**: Configures kubectl with EKS cluster credentials using `aws eks update-kubeconfig`
+3. **Registry Login**: Logs into AWS ECR using `aws ecr get-login-password`
+4. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `region`
-3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
-4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+5. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+6. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ## Helm Values
 

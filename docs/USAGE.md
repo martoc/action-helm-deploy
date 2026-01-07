@@ -47,7 +47,7 @@ Before using this action, ensure that you have the following secrets configured 
 | `gcp_project_id` | Google Cloud Project ID (required for GCP registry) | No | `""` |
 | `workload_identity_provider` | Workload Identity Provider (required for GCP registry) | No | `""` |
 | `service_account` | Service Account (required for GCP registry) | No | `""` |
-| `cluster_name` | Kubernetes cluster name (required for GCP registry) | No | `""` |
+| `cluster_name` | Kubernetes cluster name (required for GCP and AWS registries) | No | `""` |
 | `aws_role_arn` | AWS IAM Role ARN for OIDC authentication (required for AWS registry) | No | `""` |
 | `chart_name` | Name of the Helm chart to deploy | Yes | - |
 | `chart_version` | Version of the Helm chart to deploy | Yes | - |
@@ -158,8 +158,6 @@ jobs:
         uses: martoc/action-tag@v0
         with:
           skip-push: true
-      - name: Configure kubectl for EKS
-        run: aws eks update-kubeconfig --region eu-west-1 --name your-cluster
       - name: Deploy
         uses: martoc/action-helm-deploy@v0
         with:
@@ -167,6 +165,7 @@ jobs:
           region: eu-west-1
           repository_name: repository
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+          cluster_name: your-cluster
           chart_name: your-chart
           chart_version: 1.0.0
           chart_value_file: values.yaml
@@ -182,8 +181,6 @@ jobs:
         with:
           fetch-depth: 50
           fetch-tags: true
-      - name: Configure kubectl for EKS
-        run: aws eks update-kubeconfig --region eu-west-1 --name your-cluster
       - name: Deploy with specific version
         uses: martoc/action-helm-deploy@v0
         with:
@@ -191,6 +188,7 @@ jobs:
           region: eu-west-1
           repository_name: repository
           aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+          cluster_name: your-cluster
           chart_name: your-chart
           chart_version: 1.0.0
           chart_value_file: values.yaml
@@ -215,7 +213,7 @@ jobs:
 * `region` input is required
 * `repository_name` input is required
 * `aws_role_arn` input is required (store as a GitHub secret)
-* EKS credentials must be configured (e.g., using `aws eks update-kubeconfig`)
+* `cluster_name` input is required (the action automatically configures EKS credentials)
 
 ## Helm Values
 
@@ -259,10 +257,11 @@ flowchart TD
     E --> F[Configure GKE credentials]
     F --> G[Login to GCP Artifact Registry]
     G --> H[Render Helm template]
-    D --> I[Login to AWS ECR]
-    I --> J[Render Helm template]
-    H --> K[Store deployment.yaml artifact]
-    J --> K
-    K --> L[kubectl apply]
-    L --> M[End]
+    D --> I[Configure EKS credentials]
+    I --> J[Login to AWS ECR]
+    J --> K[Render Helm template]
+    H --> L[Store deployment.yaml artifact]
+    K --> L
+    L --> M[kubectl apply]
+    M --> N[End]
 ```
