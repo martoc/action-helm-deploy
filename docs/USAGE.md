@@ -45,14 +45,14 @@ Before using this action, ensure that you have the following secrets configured 
 | `repository_name` | Repository name in the registry | Yes | - |
 | `environment` | Environment name for deployment | No | `""` |
 | `gcp_project_id` | Google Cloud Project ID (required for GCP registry) | No | `""` |
+| `workload_identity_provider` | Workload Identity Provider (required for GCP registry) | No | `""` |
+| `service_account` | Service Account (required for GCP registry) | No | `""` |
+| `cluster_name` | Kubernetes cluster name (required for GCP registry) | No | `""` |
 | `aws_role_arn` | AWS IAM Role ARN for OIDC authentication (required for AWS registry) | No | `""` |
 | `chart_name` | Name of the Helm chart to deploy | Yes | - |
 | `chart_version` | Version of the Helm chart to deploy | Yes | - |
 | `chart_value_file` | Path to the Helm values file | Yes | - |
 | `version` | Application version to set in the deployment | No | `""` |
-| `workload_identity_provider` | Workload Identity Provider (required for GCP registry) | No | `""` |
-| `service_account` | Service Account (required for GCP registry) | No | `""` |
-| `cluster_name` | Kubernetes cluster name (required for GCP registry) | No | `""` |
 
 ### Environment Variables
 

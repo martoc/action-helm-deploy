@@ -7,7 +7,7 @@ A GitHub Action that deploys Helm charts from OCI registries to Kubernetes clust
 ## Features
 
 - Deploy Helm charts from OCI registries (GCP Artifact Registry, AWS ECR)
-- Automatic authentication with GCP using `gcloud` or AWS using OIDC
+- Automatic authentication with GCP using Workload Identity Federation or AWS using OIDC
 - Pass custom values and environment-specific configurations
 - Support for versioned deployments with `appVersion`
 - Generates and applies Kubernetes manifests in a single step
@@ -18,8 +18,6 @@ Before using this action, ensure the following tools are available in your workf
 
 | Tool | Purpose |
 |------|---------|
-| `gcloud` | GCP authentication and access token generation (for GCP registry) |
-| `aws` | AWS CLI for ECR authentication (for AWS registry) |
 | `helm` | Helm chart templating |
 | `kubectl` | Kubernetes manifest deployment |
 
