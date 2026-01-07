@@ -28,7 +28,9 @@ Before using this action, ensure the following tools are available in your workf
 
 ### For AWS ECR
 
-- An IAM role with permissions to read from ECR and access EKS, configured for GitHub OIDC
+- An IAM role configured for GitHub OIDC with permissions for:
+  - **ECR**: Read access to pull Helm charts from the registry (e.g., `ecr:GetAuthorizationToken`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`)
+  - **EKS**: Access to describe and connect to the cluster (e.g., `eks:DescribeCluster`)
 
 ## Quick Start
 
