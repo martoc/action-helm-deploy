@@ -101,7 +101,8 @@ Before using this action, ensure the following tools are available in your workf
 2. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `gcpProjectId`, `region`
-3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ### AWS ECR
 
@@ -109,7 +110,8 @@ Before using this action, ensure the following tools are available in your workf
 2. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `region`
-3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ## Helm Values
 
@@ -140,6 +142,7 @@ For more detailed documentation, see:
 
 - [Usage Examples](./docs/USAGE.md)
 - [Code Style](./docs/CODESTYLE.md)
+- [Troubleshooting](./docs/TROUBLESHOOTING.md)
 - [Contributing](./.github/CONTRIBUTING.md)
 - [Security Policy](./.github/SECURITY.md)
 
