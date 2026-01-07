@@ -6,8 +6,8 @@ A GitHub Action that deploys Helm charts from OCI registries to Kubernetes clust
 
 ## Features
 
-- Deploy Helm charts from Google Cloud Artifact Registry (OCI)
-- Automatic authentication with GCP using `gcloud`
+- Deploy Helm charts from OCI registries (GCP Artifact Registry, AWS ECR)
+- Automatic authentication with GCP using `gcloud` or AWS using OIDC
 - Pass custom values and environment-specific configurations
 - Support for versioned deployments with `appVersion`
 - Generates and applies Kubernetes manifests in a single step
@@ -18,17 +18,25 @@ Before using this action, ensure the following tools are available in your workf
 
 | Tool | Purpose |
 |------|---------|
-| `gcloud` | GCP authentication and access token generation |
+| `gcloud` | GCP authentication and access token generation (for GCP registry) |
+| `aws` | AWS CLI for ECR authentication (for AWS registry) |
 | `helm` | Helm chart templating |
 | `kubectl` | Kubernetes manifest deployment |
 
-You must also have:
+### For GCP Artifact Registry
 
 - A GCP service account with permissions to read from Artifact Registry
 - `kubectl` configured with access to your target Kubernetes cluster
 - Prior authentication step using `google-github-actions/auth`
 
+### For AWS ECR
+
+- An IAM role with permissions to read from ECR, configured for GitHub OIDC
+- `kubectl` configured with access to your target Kubernetes cluster (e.g., EKS)
+
 ## Quick Start
+
+### GCP Artifact Registry
 
 ```yaml
 - name: Authenticate to Google Cloud
@@ -53,14 +61,32 @@ You must also have:
     version: ${{ github.sha }}
 ```
 
+### AWS ECR
+
+```yaml
+- name: Deploy Helm Chart
+  uses: martoc/action-helm-deploy@v0
+  with:
+    registry: aws
+    region: eu-west-1
+    repository_name: helm-charts
+    aws_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+    chart_name: my-application
+    chart_version: 1.0.0
+    chart_value_file: ./values/production.yaml
+    environment: production
+    version: ${{ github.sha }}
+```
+
 ## Inputs
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `registry` | No | `docker.io` | Registry type. Currently only `gcp` is supported for deployments |
-| `region` | No | `""` | GCP region (e.g., `europe-west2`, `us-central1`) |
-| `repository_name` | No | `""` | Name of the Artifact Registry repository |
-| `gcp_project_id` | No | `""` | Google Cloud Project ID |
+| `registry` | **Yes** | - | Registry type. Valid values: `gcp`, `aws` |
+| `region` | **Yes** | - | Cloud region (e.g., `europe-west2`, `eu-west-1`) |
+| `repository_name` | **Yes** | - | Name of the registry repository |
+| `gcp_project_id` | No | `""` | Google Cloud Project ID (required for GCP registry) |
+| `aws_role_arn` | No | `""` | AWS IAM Role ARN for OIDC authentication (required for AWS registry) |
 | `chart_name` | **Yes** | - | Name of the Helm chart to deploy |
 | `chart_version` | **Yes** | - | Version of the Helm chart |
 | `chart_value_file` | **Yes** | - | Path to the Helm values file |
@@ -69,20 +95,40 @@ You must also have:
 
 ## How It Works
 
+### GCP Artifact Registry
+
 1. **Authentication**: Logs into the GCP Artifact Registry using `gcloud auth print-access-token`
 2. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `gcpProjectId`, `region`
 3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
+### AWS ECR
+
+1. **Authentication**: Configures AWS credentials using OIDC and logs into ECR using `aws ecr get-login-password`
+2. **Template Rendering**: Uses `helm template` to render the chart with:
+   - Values from the specified values file
+   - Custom values: `appVersion`, `environment`, `region`
+3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+
 ## Helm Values
 
 The action automatically sets the following values when rendering the Helm template:
+
+### GCP Registry
 
 ```yaml
 appVersion: <version input>
 environment: <environment input>
 gcpProjectId: <gcp_project_id input>
+region: <region input>
+```
+
+### AWS Registry
+
+```yaml
+appVersion: <version input>
+environment: <environment input>
 region: <region input>
 ```
 
