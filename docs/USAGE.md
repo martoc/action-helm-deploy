@@ -6,6 +6,14 @@ This GitHub Action is designed to deploy Helm charts to Kubernetes clusters.
 It simplifies the CI/CD workflow by automating the process of pulling Helm charts
 from a registry and deploying them to a Kubernetes cluster.
 
+The action performs the following steps:
+
+1. Authenticates with the specified cloud registry (GCP or AWS)
+2. Logs into the Helm OCI registry
+3. Renders the Helm chart using `helm template`
+4. Stores the generated `deployment.yaml` as an artifact for debugging
+5. Applies the manifest to Kubernetes using `kubectl apply`
+
 Supported registries:
 
 - **GCP Artifact Registry** - Google Cloud's container and artifact registry
@@ -42,6 +50,8 @@ Before using this action, ensure that you have the following secrets configured 
 | `chart_version` | Version of the Helm chart to deploy | Yes | - |
 | `chart_value_file` | Path to the Helm values file | Yes | - |
 | `version` | Application version to set in the deployment | No | `""` |
+| `workload_identity_provider` | Workload Identity Provider (required for GCP registry) | No | `""` |
+| `service_account` | Service Account (required for GCP registry) | No | `""` |
 
 ### Environment Variables
 
@@ -231,3 +241,36 @@ The action automatically sets the following values when deploying the chart:
 * `appVersion` - Set to `TAG_VERSION` environment variable or `version` input
 * `environment` - Set to the `environment` input value
 * `region` - Set to the `region` input value
+
+## Deployment Artifacts
+
+The action automatically stores the generated `deployment.yaml` as a GitHub Actions artifact with a 30-day retention period. The artifact name is derived from the `chart_value_file` input, with slashes replaced by hyphens.
+
+This is useful for:
+
+- Debugging deployment issues
+- Auditing what was deployed
+- Comparing deployments across environments
+
+You can download the artifact from the GitHub Actions workflow run summary page.
+
+## Workflow Diagram
+
+The following diagram illustrates the deployment workflow:
+
+```mermaid
+flowchart TD
+    A[Start] --> B{Registry Type}
+    B -->|GCP| C[Set up Cloud SDK]
+    B -->|AWS| D[Configure AWS credentials]
+    C --> E[Authenticate to GCP]
+    E --> F[Configure GKE credentials]
+    F --> G[Login to GCP Artifact Registry]
+    G --> H[Render Helm template]
+    D --> I[Login to AWS ECR]
+    I --> J[Render Helm template]
+    H --> K[Store deployment.yaml artifact]
+    J --> K
+    K --> L[kubectl apply]
+    L --> M[End]
+```
