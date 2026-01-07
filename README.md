@@ -101,7 +101,17 @@ Before using this action, ensure the following tools are available in your workf
 2. **Template Rendering**: Uses `helm template` to render the chart with:
    - Values from the specified values file
    - Custom values: `appVersion`, `environment`, `gcpProjectId`, `region`
-3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+
+### AWS ECR
+
+1. **Authentication**: Configures AWS credentials using OIDC and logs into ECR using `aws ecr get-login-password`
+2. **Template Rendering**: Uses `helm template` to render the chart with:
+   - Values from the specified values file
+   - Custom values: `appVersion`, `environment`, `region`
+3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
+4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
 ### AWS ECR
 
@@ -140,9 +150,10 @@ For more detailed documentation, see:
 
 - [Usage Examples](./docs/USAGE.md)
 - [Code Style](./docs/CODESTYLE.md)
+- [Troubleshooting](./docs/TROUBLESHOOTING.md)
 - [Contributing](./.github/CONTRIBUTING.md)
 - [Security Policy](./.github/SECURITY.md)
 
-## License
+## Licence
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licenced under the MIT Licence - see the [LICENCE](LICENSE) file for details.
