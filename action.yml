@@ -30,7 +30,7 @@ inputs:
     required: false
     default: ""
   cluster_name:
-    description: "Kubernetes cluster name (required for GCP registry)"
+    description: "Kubernetes cluster name (required for GCP and AWS registries)"
     required: false
     default: ""
   aws_role_arn:
@@ -102,6 +102,13 @@ runs:
       with:
         role-to-assume: ${{ inputs.aws_role_arn }}
         aws-region: ${{ inputs.region }}
+      if: ${{ inputs.registry == 'aws' }}
+    - name: Configure EKS credentials
+      shell: sh
+      run: |
+        aws eks update-kubeconfig \
+          --name "${{ inputs.cluster_name }}" \
+          --region "${{ inputs.region }}"
       if: ${{ inputs.registry == 'aws' }}
     - name: Login to AWS ECR
       shell: sh
