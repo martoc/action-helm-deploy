@@ -113,6 +113,14 @@ Before using this action, ensure the following tools are available in your workf
 3. **Artifact Storage**: Stores the generated `deployment.yaml` as a workflow artifact (30-day retention)
 4. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
 
+### AWS ECR
+
+1. **Authentication**: Configures AWS credentials using OIDC and logs into ECR using `aws ecr get-login-password`
+2. **Template Rendering**: Uses `helm template` to render the chart with:
+   - Values from the specified values file
+   - Custom values: `appVersion`, `environment`, `region`
+3. **Deployment**: Applies the generated `deployment.yaml` manifest using `kubectl apply`
+
 ## Helm Values
 
 The action automatically sets the following values when rendering the Helm template:
