@@ -5,10 +5,10 @@ description: |
 author: martoc
 inputs:
   registry:
-    description: "Registry to deploy from. Valid values: gcp, aws"
+    description: "Cloud to deploy to. Valid values: gcp, aws, azure. azure deploys to AKS with the chart pulled from ECR"
     required: true
   region:
-    description: "Region to deploy from. Valid values: Google Cloud or AWS regions"
+    description: "Region to deploy to. Valid values: Google Cloud, AWS or Azure regions"
     required: true
   repository_name:
     description: "Repository Name"
@@ -52,6 +52,26 @@ inputs:
     required: true
   version:
     description: "Version"
+    required: false
+    default: ""
+  chart_registry_region:
+    description: "AWS region of the ECR registry holding the chart, for azure (the Azure region is not an ECR region). Ignored for gcp and aws"
+    required: false
+    default: "eu-central-1"
+  azure_client_id:
+    description: "Client id of the Entra ID identity to log in with by OIDC (required for azure)"
+    required: false
+    default: ""
+  azure_tenant_id:
+    description: "Entra ID tenant id (required for azure)"
+    required: false
+    default: ""
+  azure_subscription_id:
+    description: "Azure subscription id (required for azure)"
+    required: false
+    default: ""
+  azure_resource_group:
+    description: "Resource group of the AKS cluster; defaults to rg-aks-<region>"
     required: false
     default: ""
 runs:
@@ -142,6 +162,51 @@ runs:
           cat deployment.yaml
           echo "====== END deployment.yaml ======"
       if: ${{ inputs.registry == 'aws' }}
+    # azure: the chart stays in ECR (one chart registry for every cloud), so the registry
+    # role is assumed in the ECR region rather than the Azure region being deployed to.
+    - name: Configure AWS credentials for the chart registry
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.aws_role_arn_registry }}
+        aws-region: ${{ inputs.chart_registry_region }}
+      if: ${{ inputs.registry == 'azure' }}
+    - name: Render from AWS ECR for Azure
+      shell: bash
+      env:
+        AWS_ROLE_ARN_REGISTRY: ${{ inputs.aws_role_arn_registry }}
+        CHART_REGISTRY_REGION: ${{ inputs.chart_registry_region }}
+        REPOSITORY_NAME: ${{ inputs.repository_name }}
+        CHART_NAME: ${{ inputs.chart_name }}
+        CHART_VERSION: ${{ inputs.chart_version }}
+        CHART_VALUE_FILE: ${{ inputs.chart_value_file }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        REGION: ${{ inputs.region }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        AWS_ACCOUNT_ID=$(cut -d: -f5 <<<"${AWS_ROLE_ARN_REGISTRY}")
+        if [[ -z "${AWS_ACCOUNT_ID}" ]]; then
+          echo "::error::aws_role_arn_registry ('${AWS_ROLE_ARN_REGISTRY}') is not an IAM role ARN; azure pulls the chart from ECR and needs it" >&2
+          exit 1
+        fi
+        CHART_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${CHART_REGISTRY_REGION}.amazonaws.com"
+        aws ecr get-login-password --region "${CHART_REGISTRY_REGION}" | \
+          helm registry login --username AWS --password-stdin "${CHART_REGISTRY}"
+        TAG_VERSION="${VERSION:-${TAG_VERSION:-}}"
+        echo "TAG_VERSION=${TAG_VERSION}"
+        echo "Chart Values:"
+        cat "${CHART_VALUE_FILE}"
+        helm template \
+          "oci://${CHART_REGISTRY}/${REPOSITORY_NAME}/${CHART_NAME}" \
+          --version "${CHART_VERSION}" \
+          --values "${CHART_VALUE_FILE}" \
+          --set appVersion="${TAG_VERSION}" \
+          --set environment="${ENVIRONMENT}" \
+          --set region="${REGION}" > deployment.yaml
+        echo "====== BEGIN deployment.yaml ======"
+        cat deployment.yaml
+        echo "====== END deployment.yaml ======"
+      if: ${{ inputs.registry == 'azure' }}
     - name: Set artifact name
       id: artifact-name
       shell: sh
@@ -167,6 +232,30 @@ runs:
           --name "${{ inputs.cluster_name }}" \
           --region "${{ inputs.region }}"
       if: ${{ inputs.registry == 'aws' }}
+    - name: Authenticate to Azure
+      uses: azure/login@v3
+      with:
+        client-id: ${{ inputs.azure_client_id }}
+        tenant-id: ${{ inputs.azure_tenant_id }}
+        subscription-id: ${{ inputs.azure_subscription_id }}
+      if: ${{ inputs.registry == 'azure' }}
+    # The AKS clusters use Entra ID with Azure RBAC and local accounts disabled, so the
+    # kubeconfig az writes needs kubelogin to turn the az session into a cluster token.
+    - name: Set up kubelogin
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: v0.2.19
+      if: ${{ inputs.registry == 'azure' }}
+    - name: Configure AKS credentials
+      shell: bash
+      env:
+        CLUSTER_NAME: ${{ inputs.cluster_name }}
+        RESOURCE_GROUP: ${{ inputs.azure_resource_group || format('rg-aks-{0}', inputs.region) }}
+      run: |
+        set -euo pipefail
+        az aks get-credentials --resource-group "${RESOURCE_GROUP}" --name "${CLUSTER_NAME}" --overwrite-existing
+        kubelogin convert-kubeconfig -l azurecli
+      if: ${{ inputs.registry == 'azure' }}
     - name: kubectl apply
       shell: sh
       run: |

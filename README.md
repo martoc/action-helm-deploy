@@ -6,7 +6,7 @@ A GitHub Action that deploys Helm charts from OCI registries to Kubernetes clust
 
 ## Features
 
-- Deploy Helm charts from OCI registries (GCP Artifact Registry, AWS ECR)
+- Deploy Helm charts from OCI registries (GCP Artifact Registry, AWS ECR) to GKE, EKS and AKS
 - Automatic authentication with GCP using Workload Identity Federation or AWS using OIDC
 - Pass custom values and environment-specific configurations
 - Support for versioned deployments with `appVersion`
@@ -72,11 +72,38 @@ Before using this action, ensure the following tools are available in your workf
     version: ${{ github.sha }}
 ```
 
+### Azure (AKS, chart from AWS ECR)
+
+The chart stays in ECR; only the cluster is on Azure. The action assumes `aws_role_arn_registry`
+in `chart_registry_region` to pull the chart, logs in to Entra ID by OIDC, and writes an AKS
+kubeconfig converted with kubelogin (the clusters use Entra ID with local accounts disabled).
+The identity needs a Kubernetes RBAC role on the cluster, such as
+*Azure Kubernetes Service RBAC Cluster Admin*.
+
+```yaml
+- name: Deploy Helm Chart
+  uses: martoc/action-helm-deploy@v0
+  with:
+    registry: azure
+    region: swedencentral
+    repository_name: common
+    aws_role_arn_registry: ${{ vars.AWS_ROLE_ARN_DEPLOYMENTS }}
+    azure_client_id: ${{ vars.AZURE_CLIENT_ID_PROD }}
+    azure_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+    azure_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    cluster_name: main
+    chart_name: workload
+    chart_version: 3.9.0
+    chart_value_file: cloud/azure/nodals-ai-prod/swedencentral/main.yaml
+    environment: nodals-ai-prod
+    version: 1.2.3
+```
+
 ## Inputs
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `registry` | **Yes** | - | Registry type. Valid values: `gcp`, `aws` |
+| `registry` | **Yes** | - | Cloud to deploy to. Valid values: `gcp`, `aws`, `azure` |
 | `region` | **Yes** | - | Cloud region (e.g., `europe-west2`, `eu-west-1`) |
 | `repository_name` | **Yes** | - | Name of the registry repository |
 | `gcp_project_id` | No | `""` | Google Cloud Project ID (required for GCP registry) |
@@ -89,6 +116,11 @@ Before using this action, ensure the following tools are available in your workf
 | `chart_value_file` | **Yes** | - | Path to the Helm values file |
 | `environment` | No | `""` | Environment name (e.g., `dev`, `staging`, `production`) |
 | `version` | No | `""` | Application version, passed as `appVersion` to the Helm chart |
+| `chart_registry_region` | No | `eu-central-1` | ECR region holding the chart, for `azure` |
+| `azure_client_id` | No | `""` | Entra ID identity client id (required for `azure`) |
+| `azure_tenant_id` | No | `""` | Entra ID tenant id (required for `azure`) |
+| `azure_subscription_id` | No | `""` | Azure subscription id (required for `azure`) |
+| `azure_resource_group` | No | `rg-aks-<region>` | Resource group of the AKS cluster |
 
 ## How It Works
 
